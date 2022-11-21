@@ -102,7 +102,8 @@ def main():
 
   with wandb.init(
       project="git-re-basin",
-      entity="skainswo",
+      entity="lily-le",
+      name="mnist-match",
       tags=["mnist", "mlp", "weight-matching"],
       job_type="analysis",
   ) as wandb_run:
@@ -141,7 +142,7 @@ def main():
     artifact = wandb.Artifact("mnist_mlp_weight_matching",
                               type="permutation",
                               metadata={
-                                  "dataset": "mnist",
+                                  "dataset": "mnist-mnistc",
                                   "model": "mlp",
                                   "analysis": "weight-matching"
                               })

@@ -118,8 +118,8 @@ if __name__ == "__main__":
 
   with wandb.init(
       project="git-re-basin",
-      entity="skainswo",
-      tags=["mnist", "mlp", "activation-matching"],
+      entity="lily-le",
+      tags=["mnist-mnistc", "mlp", "activation-matching"],
       job_type="analysis",
   ) as wandb_run:
     config = wandb.config
