@@ -1,0 +1,14 @@
+tensorflow-gpu
+ffmpeg
+augmax
+einops
+flax
+ipython
+jax
+matplotlib
+plotly
+seaborn
+tensorflow-datasets
+tqdm
+wandb
+yapf

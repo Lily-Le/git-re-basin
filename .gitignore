@@ -2,7 +2,7 @@
 *.pdf
 *.png
 *.eps
-
+output/
 # Nix build results
 result*
 
