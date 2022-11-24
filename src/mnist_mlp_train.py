@@ -1,6 +1,7 @@
 """Train an MLP on MNIST on one random seed. Serialize the model for
 interpolation downstream."""
 import argparse
+import os
 
 import augmax
 import flax
@@ -17,7 +18,7 @@ from jax import jit, random, tree_map, value_and_grad, vmap
 from tqdm import tqdm
 
 from utils import ec2_get_instance_type, flatten_params, rngmix, timeblock
-
+tfds.core.utils.gcs_utils._is_gcs_disabled = True
 # See https://github.com/tensorflow/tensorflow/issues/53831.
 
 # See https://github.com/google/jax/issues/9454.
@@ -85,7 +86,7 @@ def make_stuff(model):
     }
 
 
-def load_mnist_datasets2():
+def load_mnist_datasets():
     """Return the training and test datasets, unbatched."""
     # See https://www.tensorflow.org/datasets/overview#as_batched_tftensor_batch_size-1.
     train_ds_images_u8, train_ds_labels = tfds.as_numpy(
@@ -132,8 +133,8 @@ def load_mnistc_datasets():
 def load_merged_datasets():
     train1,test1=load_mnist_datasets()
     train2,test2=load_mnistc_datasets()
-    train_len=len(train1)+len(train2)
-    test_len=len(test1)+len(test2)
+    train_len=len(train1["images_u8"])+len(train2["images_u8"])
+    test_len=len(test1["images_u8"])+len(test2["images_u8"])
     perm_train = np.random.default_rng(123).permutation(train_len)
     perm_test = np.random.default_rng(123).permutation(test_len)
 
@@ -169,8 +170,8 @@ def main():
     with wandb.init(
             project="git-re-basin",
             entity="lily-le",
-            name=args.dataset+"-mlp",
-            tags=[args.dataset, "mlp", "training"],
+            name=args.dataset+"-mlp-"+f"seed{args.seed}",   
+            tags=[args.dataset, "mlp", "training",f"seed{args.seed}"],
             mode="disabled" if args.test else "online",
             job_type="train",
     ) as wandb_run:
@@ -195,6 +196,9 @@ def main():
                 train_ds, test_ds = load_mnist_datasets()
             if args.dataset=="mnist-corrupted":
                 train_ds, test_ds = load_mnistc_datasets()
+            if args.dataset=="both":
+                train_ds, test_ds = load_merged_datasets()
+     
 
             print("train_ds labels hash", hash(np.array(train_ds["labels"]).tobytes()))
             print("test_ds labels hash", hash(np.array(test_ds["labels"]).tobytes()))
@@ -271,13 +275,17 @@ def main():
             })
 
             # With layer width 512, the MLP is 3.7MB per checkpoint.
-            with timeblock("model serialization"):
-                with artifact.new_file(f"checkpoint{epoch}", mode="wb") as f:
-                    f.write(flax.serialization.to_bytes(train_state.params))
-
+            
+            # with timeblock("model serialization"):
+            #     with artifact.new_file(f"checkpoint{epoch}", mode="wb") as f:
+            #         f.write(flax.serialization.to_bytes(train_state.params))
+        
+        with timeblock("model serialization"):
+            with artifact.new_file(f"checkpoint{epoch}", mode="wb") as f:
+                f.write(flax.serialization.to_bytes(train_state.params))
         # This will be a no-op when config.test is enabled anyhow, since wandb will
         # be initialized with mode="disabled".
-        wandb_run.log_artifact(artifact)
+        wandb_run.log_artifact(artifact,aliases=[f'seed{args.seed}'])
 
 
 if __name__ == "__main__":

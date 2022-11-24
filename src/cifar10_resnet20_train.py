@@ -111,10 +111,11 @@ if __name__ == "__main__":
 
   with wandb.init(
       project="git-re-basin",
-      entity="skainswo",
+      entity="lily-le",
       tags=["cifar10", "resnet", "training"],
       mode="disabled" if args.test else "online",
       job_type="train",
+      name="cifar10-resnet20-split1",
   ) as wandb_run:
     artifact = wandb.Artifact("cifar10-resnet-weights", type="model-weights")
 

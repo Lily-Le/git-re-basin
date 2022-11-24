@@ -13,7 +13,7 @@ import argparse
 import pickle
 from pathlib import Path
 
-import jax.numpy as jnp
+import jax.numpy as jnp #optimize
 import matplotlib.pyplot as plt
 import wandb
 from flax import linen as nn
@@ -24,7 +24,7 @@ from scipy.optimize import linear_sum_assignment
 from tqdm import tqdm
 
 import matplotlib_style as _
-from mnist_mlp_train import MLPModel, load_datasets, make_stuff
+from mnist_mlp_train import MLPModel, load_mnist_datasets, make_stuff,load_mnistc_datasets,load_merged_datasets
 from online_stats import OnlineCovariance, OnlineMean
 from utils import ec2_get_instance_type, flatten_params, lerp, unflatten_params
 from weight_matching import apply_permutation, mlp_permutation_spec
@@ -113,14 +113,17 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument("--model-a", type=str, required=True)
   parser.add_argument("--model-b", type=str, required=True)
+  parser.add_argument("--dataset",type=str,default="mnist")
   parser.add_argument("--seed", type=int, default=0, help="Random seed")
   args = parser.parse_args()
 
   with wandb.init(
       project="git-re-basin",
       entity="lily-le",
-      tags=["mnist-mnistc", "mlp", "activation-matching"],
-      job_type="analysis",
+      tags=["mnist-mnistc", "mlp", "activation-matching","dataset="+args.dataset],
+      # job_type="analysis",
+      job_type="debug",
+      name="mnist-activation-matching",
   ) as wandb_run:
     config = wandb.config
     config.ec2_instance_type = ec2_get_instance_type()
@@ -139,17 +142,23 @@ if __name__ == "__main__":
     filename = f"checkpoint{config.load_epoch}"
     model_a = load_model(
         Path(
-            wandb_run.use_artifact(f"mnist-mlp-weights:{config.model_a}").get_path(
+            wandb_run.use_artifact(f"{config.model_a}").get_path(
                 filename).download()))
     model_b = load_model(
         Path(
-            wandb_run.use_artifact(f"mnist-mlp-weights:{config.model_b}").get_path(
+            wandb_run.use_artifact(f"{config.model_b}").get_path(
                 filename).download()))
+    if args.dataset=="mnist":
+      train_ds, test_ds = load_mnist_datasets()
+    if args.dataset=="mnist-corrupted":
+      train_ds, test_ds = load_mnistc_datasets()
+    if args.dataset=="both":
+      train_ds, test_ds = load_merged_datasets()
 
-    train_ds, test_ds = load_datasets()
 
     num_train_examples = train_ds["images_u8"].shape[0]
-    assert num_train_examples == 60_000
+    print(f"num_train_examples={num_train_examples}")
+    # assert num_train_examples == 60_000
 
     batch_size = 500
     assert num_train_examples % batch_size == 0

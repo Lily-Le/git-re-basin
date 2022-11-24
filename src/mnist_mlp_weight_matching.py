@@ -9,7 +9,7 @@ from flax.serialization import from_bytes
 from jax import random
 from tqdm import tqdm
 
-from mnist_mlp_train import MLPModel, load_datasets, make_stuff
+from mnist_mlp_train import MLPModel, load_mnist_datasets, make_stuff,load_mnistc_datasets,load_merged_datasets
 from utils import ec2_get_instance_type, flatten_params, lerp, unflatten_params
 from weight_matching import (apply_permutation, mlp_permutation_spec, weight_matching)
 
@@ -98,12 +98,13 @@ def main():
   parser.add_argument("--model-a", type=str, required=True)
   parser.add_argument("--model-b", type=str, required=True)
   parser.add_argument("--seed", type=int, default=0, help="Random seed")
+  parser.add_argument("--dataset", type=str, choices=["mnist","mnist-corrupted","merged"],required=True)
   args = parser.parse_args()
 
   with wandb.init(
       project="git-re-basin",
       entity="lily-le",
-      name="mnist-match",
+      name=f"{args.dataset}-match",
       tags=["mnist", "mlp", "weight-matching"],
       job_type="analysis",
   ) as wandb_run:
@@ -125,30 +126,35 @@ def main():
     filename = f"checkpoint{config.load_epoch}"
     model_a = load_model(
         Path(
-            wandb_run.use_artifact(f"mnist-mlp-weights:{config.model_a}").get_path(
+            wandb_run.use_artifact(f"{config.model_a}").get_path(
                 filename).download()))
     model_b = load_model(
         Path(
-            wandb_run.use_artifact(f"mnist-mlp-weights:{config.model_b}").get_path(
+            wandb_run.use_artifact(f"{config.model_b}").get_path(
                 filename).download()))
-
-    train_ds, test_ds = load_datasets()
+    
+    if args.dataset =="mnist":
+      train_ds, test_ds = load_mnist_datasets()
+    if args.dataset=="mnist-corrupted":
+      train_ds, test_ds = load_mnistc_datasets()
+    if args.dataset=="merged":
+      train_ds, test_ds = load_merged_datasets()
 
     permutation_spec = mlp_permutation_spec(3)
     final_permutation = weight_matching(random.PRNGKey(config.seed), permutation_spec,
                                         flatten_params(model_a), flatten_params(model_b))
 
     # Save final_permutation as an Artifact
-    artifact = wandb.Artifact("mnist_mlp_weight_matching",
+    artifact = wandb.Artifact(f"{args.dataset}_mlp_weight_matching",
                               type="permutation",
                               metadata={
-                                  "dataset": "mnist-mnistc",
+                                  "dataset": args.dataset,
                                   "model": "mlp",
                                   "analysis": "weight-matching"
                               })
     with artifact.new_file("permutation.pkl", mode="wb") as f:
       pickle.dump(final_permutation, f)
-    wandb_run.log_artifact(artifact)
+    wandb_run.log_artifact(artifact,aliases=[f'{config.model_a}+{config.model_b}'.replace("mlp-weights:","")])
 
     lambdas = jnp.linspace(0, 1, num=25)
     train_loss_interp_naive = []
