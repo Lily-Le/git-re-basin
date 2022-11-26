@@ -13,7 +13,7 @@ from jax import random, tree_map
 from tqdm import tqdm
 
 from cifar10_vgg_run import make_stuff
-from datasets import load_cifar10
+from datasets import load_cifar10,load_cifar10_corrupted,load_cifar10_merged
 from utils import ec2_get_instance_type, flatten_params, rngmix, timeblock
 
 # See https://github.com/tensorflow/tensorflow/issues/53831.

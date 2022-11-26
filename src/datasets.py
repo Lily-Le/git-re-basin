@@ -11,6 +11,46 @@ def load_cifar10():
   test_ds = {"images_u8": test_ds_images_u8, "labels": test_ds_labels}
   return train_ds, test_ds
 
+def load_cifar10_corrupted(noise_type):
+  """Return the training and test datasets, as jnp.array's."""
+  train_ds_images_u8, train_ds_labels = tfds.as_numpy(
+      tfds.load(f"cifar10_corrupted/{noise_type}", split="train", batch_size=-1, as_supervised=True))
+  test_ds_images_u8, test_ds_labels = tfds.as_numpy(
+      tfds.load(f"cifar10_corrupted/{noise_type}", split="test", batch_size=-1, as_supervised=True))
+  train_ds = {"images_u8": train_ds_images_u8, "labels": train_ds_labels}
+  test_ds = {"images_u8": test_ds_images_u8, "labels": test_ds_labels}
+  return train_ds, test_ds
+
+def load_cifar10_merged(noise_type):
+    train1,test1=load_cifar10()
+    train2,test2=load_cifar10_corrupted(noise_type)
+    
+    train_len=len(train1["images_u8"])+len(train2["images_u8"])
+    test_len=len(test1["images_u8"])+len(test2["images_u8"])
+    perm_train = np.random.default_rng(123).permutation(train_len)
+    perm_test = np.random.default_rng(123).permutation(test_len)
+
+    train_images_u8=np.concatenate((train1["images_u8"], train2["images_u8"]), axis=0)
+    train_labels= np.concatenate((train1["labels"], train2["labels"]), axis=0)
+    train_images_u8=train_images_u8[perm_train,:,:,:]
+    train_labels=train_labels[perm_train]
+
+    test_images_u8 = np.concatenate((test1["images_u8"], test2["images_u8"]), axis=0)
+    test_labels= np.concatenate((test1["labels"], test2["labels"]), axis=0)
+    test_images_u8 = test_images_u8[perm_test, :, :, :]
+    test_labels = test_labels[perm_test]
+
+    train_ds = {
+        "images_u8": train_images_u8,
+        "labels": train_labels
+    }
+    test_ds = {
+        "images_u8": test_images_u8,
+        "labels": test_labels
+    }
+    return train_ds, test_ds
+
+
 def load_cifar100():
   train_ds_images_u8, train_ds_labels = tfds.as_numpy(
       tfds.load("cifar100", split="train", batch_size=-1, as_supervised=True))

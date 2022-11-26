@@ -19,7 +19,7 @@ from jax import jit, random, value_and_grad, vmap
 from tqdm import tqdm
 
 from cifar100_resnet20_train import NUM_CLASSES
-from datasets import load_cifar10, load_cifar10_split
+from datasets import load_cifar10, load_cifar10_merged,load_cifar10_corrupted,load_cifar10_split
 from resnet20 import BLOCKS_PER_GROUP, ResNet
 from utils import ec2_get_instance_type, rngmix, timeblock
 # See https://github.com/tensorflow/tensorflow/issues/53831.
@@ -103,18 +103,20 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument("--test", action="store_true", help="Run in smoke-test mode")
   parser.add_argument("--seed", type=int, default=0, help="Random seed")
-  parser.add_argument("--data-split", choices=["split1", "split2", "both"], required=True)
+  parser.add_argument("--data-split", choices=["split1", "split2", "both"])
+  parser.add_argument("--dataset", choices=["cifar10","cifar10-corrupted","cifar10-merged"],required=True)
   parser.add_argument("--width-multiplier", type=int, default=1)
   parser.add_argument("--weight-decay", type=float, default=1e-4)
+  parser.add_argument("--noise",type=str,default="shot_noise")
   args = parser.parse_args()
 
   with wandb.init(
       project="git-re-basin",
       entity="lily-le",
-      tags=["cifar10", "resnet", "training"],
+      tags=[args.dataset, "resnet", "training",f"seed{args.seed}",f"{args.noise}"],
       mode="disabled" if args.test else "online",
-      job_type="train",
-      name=f"cifar10-resnet20-{args.data_split}-seed{args.seed}",
+      job_type="debug",
+      name=f"{args.dataset}-resnet20-{args.data_split}-seed{args.seed}",
   ) as wandb_run:
     artifact = wandb.Artifact("cifar10-resnet-weights", type="model-weights")
 
@@ -123,24 +125,34 @@ if __name__ == "__main__":
     config.test = args.test
     config.seed = args.seed
     config.data_split = args.data_split
+    config.dataset = args.dataset
+    config.noise = args.noise
     config.learning_rate = 0.1
-    config.num_epochs = 10 if args.test else 250
+    config.num_epochs = 10 if args.test else 350
     config.batch_size = 100
     config.width_multiplier = args.width_multiplier
     config.weight_decay = args.weight_decay
+    
 
     rng = random.PRNGKey(config.seed)
 
     model = ResNet(blocks_per_group=BLOCKS_PER_GROUP["resnet20"],
                    num_classes=NUM_CLASSES,
                    width_multiplier=config.width_multiplier)
-
+    # wandb.watch(model)
     with timeblock("load datasets"):
-      if config.data_split == "both":
+
+      # if config.data_split == "both":
+      #   train_ds, test_ds = load_cifar10()
+      # else:
+      #   split1, split2, test_ds = load_cifar10_split()
+      #   train_ds = split1 if config.data_split == "split1" else split2
+      if config.dataset == "cifar10":
         train_ds, test_ds = load_cifar10()
+      elif config.dataset == "cifar10-corrupted":
+        train_ds, test_ds = load_cifar10_corrupted(config.noise)
       else:
-        split1, split2, test_ds = load_cifar10_split()
-        train_ds = split1 if config.data_split == "split1" else split2
+        train_ds, test_ds = load_cifar10_merged(config.noise)
 
       print("train_ds labels hash", hash(np.array(train_ds["labels"]).tobytes()))
       print("test_ds labels hash", hash(np.array(test_ds["labels"]).tobytes()))
@@ -159,7 +171,7 @@ if __name__ == "__main__":
                                    batch_size=config.batch_size,
                                    num_train_examples=train_ds["images_u8"].shape[0],
                                    weight_decay=config.weight_decay)
-
+    
     for epoch in tqdm(range(config.num_epochs)):
       infos = []
       with timeblock(f"Epoch"):
