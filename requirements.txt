@@ -4,7 +4,6 @@ augmax
 einops
 flax
 ipython
-jax
 matplotlib
 plotly
 seaborn
