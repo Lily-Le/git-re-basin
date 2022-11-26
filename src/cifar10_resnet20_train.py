@@ -22,7 +22,6 @@ from cifar100_resnet20_train import NUM_CLASSES
 from datasets import load_cifar10, load_cifar10_split
 from resnet20 import BLOCKS_PER_GROUP, ResNet
 from utils import ec2_get_instance_type, rngmix, timeblock
-
 # See https://github.com/tensorflow/tensorflow/issues/53831.
 
 # See https://github.com/google/jax/issues/9454.
@@ -115,7 +114,7 @@ if __name__ == "__main__":
       tags=["cifar10", "resnet", "training"],
       mode="disabled" if args.test else "online",
       job_type="train",
-      name="cifar10-resnet20-split1",
+      name=f"cifar10-resnet20-{args.data_split}-seed{args.seed}",
   ) as wandb_run:
     artifact = wandb.Artifact("cifar10-resnet-weights", type="model-weights")
 
