@@ -1,5 +1,7 @@
 import numpy as np
 import tensorflow_datasets as tfds
+import corruptions
+from importlib import reload
 
 def load_cifar10():
   """Return the training and test datasets, as jnp.array's."""
@@ -14,31 +16,57 @@ def load_cifar10():
 def load_cifar10_corrupted(noise_type):
   """Return the training and test datasets, as jnp.array's."""
   train_ds_images_u8, train_ds_labels = tfds.as_numpy(
-      tfds.load(f"cifar10_corrupted/{noise_type}", split="train", batch_size=-1, as_supervised=True))
+      tfds.load(f"cifar10", split="train", batch_size=-1, as_supervised=True))
   test_ds_images_u8, test_ds_labels = tfds.as_numpy(
-      tfds.load(f"cifar10_corrupted/{noise_type}", split="test", batch_size=-1, as_supervised=True))
+      tfds.load(f"cifar10", split="test", batch_size=-1, as_supervised=True))
+  
+  reload(corruptions)
+  for i in range(len(train_ds_images_u8)):
+      x = np.array(corruptions.shot_noise(train_ds_images_u8[i,:,:,:]))
+      train_ds_images_u8[i,:,:,:]=np.round(x).astype(np.uint8)
+  for i in range(len(test_ds_images_u8)):
+      x = np.array(corruptions.shot_noise(test_ds_images_u8[i,:,:,:]))
+      test_ds_images_u8[i,:,:,:]=np.round(x).astype(np.uint8)
   train_ds = {"images_u8": train_ds_images_u8, "labels": train_ds_labels}
   test_ds = {"images_u8": test_ds_images_u8, "labels": test_ds_labels}
+  
   return train_ds, test_ds
 
 def load_cifar10_merged(noise_type):
     train1,test1=load_cifar10()
     train2,test2=load_cifar10_corrupted(noise_type)
+
+    # train_len=len(train1["images_u8"])+len(train2["images_u8"])
+    # test_len=len(test1["images_u8"])+len(test2["images_u8"])
+    # perm_train = np.random.default_rng(123).permutation(train_len)
+    # perm_test = np.random.default_rng(123).permutation(test_len)
+    # train_images_u8=np.concatenate((train1["images_u8"], train2["images_u8"]), axis=0)
+    # train_labels= np.concatenate((train1["labels"], train2["labels"]), axis=0)
+    # train_images_u8=train_images_u8[perm_train,:,:,:]
+    # train_labels=train_labels[perm_train]
+    # test_images_u8 = np.concatenate((test1["images_u8"], test2["images_u8"]), axis=0)
+    # test_labels= np.concatenate((test1["labels"], test2["labels"]), axis=0)
+    # test_images_u8 = test_images_u8[perm_test, :, :, :]
+    # test_labels = test_labels[perm_test]
+
+    train_len=len(train1["images_u8"])
+    test_len=len(test1["images_u8"])
+    corr_ind_train = np.random.default_rng(123).choice(np.arange(train_len),np.int(train_len/2),replace=False)
+    corr_ind_test = np.random.default_rng(123).choice(np.arange(test_len),np.int(test_len/2),replace=False)
+    train_images_u8=train1["images_u8"]
+    train_labels= train1["labels"]
+    # flags = np.array([0]*len(train1["images_u8"])+[1]*len(train2["images_u8"]))
+    # ind_ori=perm_train[:np.int(train_len/2)]
+    # ind_corr=perm_train[np.int(train_len/2):]
+    train_images_u8[corr_ind_train]=train2["images_u8"][corr_ind_train,:,:,:]
+    train_labels[corr_ind_train]=train2["labels"][corr_ind_train]
     
-    train_len=len(train1["images_u8"])+len(train2["images_u8"])
-    test_len=len(test1["images_u8"])+len(test2["images_u8"])
-    perm_train = np.random.default_rng(123).permutation(train_len)
-    perm_test = np.random.default_rng(123).permutation(test_len)
+    
+    test_images_u8 =test1["images_u8"]
+    test_labels= test1["labels"]
+    test_images_u8[corr_ind_test] = test2["images_u8"][corr_ind_test, :, :, :]
+    test_labels[corr_ind_test] =test2["labels"][corr_ind_test]
 
-    train_images_u8=np.concatenate((train1["images_u8"], train2["images_u8"]), axis=0)
-    train_labels= np.concatenate((train1["labels"], train2["labels"]), axis=0)
-    train_images_u8=train_images_u8[perm_train,:,:,:]
-    train_labels=train_labels[perm_train]
-
-    test_images_u8 = np.concatenate((test1["images_u8"], test2["images_u8"]), axis=0)
-    test_labels= np.concatenate((test1["labels"], test2["labels"]), axis=0)
-    test_images_u8 = test_images_u8[perm_test, :, :, :]
-    test_labels = test_labels[perm_test]
 
     train_ds = {
         "images_u8": train_images_u8,

@@ -48,7 +48,7 @@ model_a='mnist-mlp-weights:seed42'
 model_b='mnist-mlp-weights:seed579'#,'mnist-corrupted-mlp-weights:seed42']
 # model_c=
 dataset='cifar10'
-load_epoch=90
+load_epoch=349
 model_a='cifar10-resnet-weights:both'
 model_b='cifar10-resnet-weights:split2'#,'mnist-corrupted-mlp-weights:seed42']
 

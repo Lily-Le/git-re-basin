@@ -1,5 +1,5 @@
 """
-
+export XLA_PYTHON_CLIENT_MEM_FRACTION=0.7
 See
 * https://github.com/hushon/JAX-ResNet-CIFAR10/blob/main/resnet_cifar.py
 * https://github.com/akamaster/pytorch_resnet_cifar10/blob/master/resnet.py
@@ -108,17 +108,19 @@ if __name__ == "__main__":
   parser.add_argument("--width-multiplier", type=int, default=1)
   parser.add_argument("--weight-decay", type=float, default=1e-4)
   parser.add_argument("--noise",type=str,default="shot_noise")
+  parser.add_argument("--gpu",type=str,required=True)
+  parser.add_argument("--jobtype",type=str,default="train")
   args = parser.parse_args()
 
   with wandb.init(
       project="git-re-basin",
       entity="lily-le",
-      tags=[args.dataset, "resnet", "training",f"seed{args.seed}",f"{args.noise}"],
+      tags=[args.dataset, "resnet", "training",f"seed{args.seed}",f"{args.noise}",f"{args.gpu}"],
       mode="disabled" if args.test else "online",
-      job_type="debug",
+      job_type=args.jobtype,
       name=f"{args.dataset}-resnet20-{args.data_split}-seed{args.seed}",
   ) as wandb_run:
-    artifact = wandb.Artifact("cifar10-resnet-weights", type="model-weights")
+    artifact = wandb.Artifact(f"{args.dataset}-resnet20-weights", type="model-weights")
 
     config = wandb.config
     config.ec2_instance_type = ec2_get_instance_type()
@@ -213,4 +215,4 @@ if __name__ == "__main__":
 
     # This will be a no-op when config.test is enabled anyhow, since wandb will
     # be initialized with mode="disabled".
-    wandb_run.log_artifact(artifact)
+    wandb_run.log_artifact(artifact,aliases=[f'seed{args.seed}-gpu{args.gpu}'])
