@@ -1,9 +1,30 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Python: mnist-mlp",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--dataset",
+                "mnist-merged",
+                "--seed",
+                "0",
+                "--noise_type",
+                "shot_noise","impulse_noise","identity","glass_blur",
+            ]
+        },
         {
             "name": "Python: cifar10-resnet",
             "type": "python",
@@ -12,10 +33,14 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "--dataset","cifar10-merged",
-                "--gpu","3080",
-                "--seed","0",
-                "--jobtype","debug",
+                "--dataset",
+                "cifar10-merged",
+                "--gpu",
+                "3080",
+                "--seed",
+                "0",
+                "--jobtype",
+                "debug",
             ]
         }
     ]
